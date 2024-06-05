@@ -24,6 +24,7 @@ Este repositório contém um componente de instalação Delphi que permite de fo
 - Liberar o objeto
   
 ## Configuração no Google (Buscar chave)
+- Documentação base usada para criação do componente [Documentation](https://developers.google.com/identity/protocols/oauth2/service-account)
 - Primeiro acesse o [Console Google Cloud](https://console.cloud.google.com/?hl=pt-br)
 - Na aba a seguir crie sua chave json, como na imagem
   ![Console Google](gerarchave.png)
@@ -58,6 +59,7 @@ This repository contains a Delphi installation component that allows a practical
 - Release the object
 
 ## Configuration in Google (Get the key)
+- Base documentation for component create [Documentation](https://developers.google.com/identity/protocols/oauth2/service-account)
 - First, access the Google Cloud Console
 - In the following tab, create your JSON key, as shown in the image
 ![Console Google](gerarchave.png)
