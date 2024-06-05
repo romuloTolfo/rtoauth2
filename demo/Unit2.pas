@@ -34,29 +34,32 @@ implementation
 
 procedure TForm2.Button1Click(Sender: TObject);
 var
-  tc : TRTOAuth2;
-  token : string;
+  RTAuth : TRTOAuth2;
 begin
   try
-    tc := TRTOAuth2.Create(nil);
+    RTAuth := TRTOAuth2.Create(nil);
 
-//    tc.CredentialFilePath := ExtractFilePath(ParamStr(0))+'arquivo.json'; //junto ao exe + arquivo .json que vc baixou da conta de servico link :
+//    RTAuth.CredentialFilePath := ExtractFilePath(ParamStr(0))+'arquivo.json'; //junto ao exe + arquivo .json que vc baixou da conta de servico link :
 //      or
-    tc.CredentialFilePath := edit1.Text;
+    RTAuth.CredentialFilePath := edit1.Text;
 
-    if not FileExists(tc.CredentialFilePath) then raise Exception.Create('Json de credenciais não existe');
+    if not FileExists(RTAuth.CredentialFilePath) then raise Exception.Create('Json de credenciais não existe');
 
-    tc.Scope              := 'https://www.googleapis.com/auth/firebase.messaging';
+    RTAuth.Scope              := 'https://www.googleapis.com/auth/firebase.messaging';
 
-    if tc.GetOAuth2Token(token) then
+    if RTAuth.GetOAuth2Token then
     begin
-      showmessage(token)
-    end else raise Exception.Create(token);    // quando der erro, vem na mesma variavel
+      showmessage(RTAuth.TokenOrError);
+      showmessage(RTAuth.Expiresin.ToString); //expiração do token vem em segundos, normalmente é de 1 hora
+
+      showmessage(RTAuth.TokenType);
+      //tipo do token normalmente pra prosseguir com a api do google usando esse token voce tera que passar ele no HEADER da sua requisicao de api assim --> Bearer seutokenrecebido   //atencao ao espaco em branco depois de Bearer
+
+    end else raise Exception.Create(RTAuth.TokenOrError);    // quando der erro, vem na mesma variavel
 
   finally
-    tc.free;
+    RTAuth.free;
   end;
-
 
 end;
 

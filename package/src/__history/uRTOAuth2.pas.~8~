@@ -1,0 +1,195 @@
+﻿{******************************************************************************}
+{                                                                              }
+{  RTOAUTH2                                                                    }
+{  Copyright (c) 2024 Rômulo Tolfo                                             }
+{  https://github.com/romuloTolfo                                              }
+{                                                                              }
+{ Criei porque não achei nada a respeito na internet, nem na comunidade,       }
+{ acredito que isso economizará tempo de algumas pessoas!                      }
+{                                                                              }
+{ Jesus é o caminho, a verdade e a vida!                                       }
+{                                                                              }
+{ Não economizem estrelas pra quem ajuda a comunidade no git kkkk   !!!        }
+{                                                                              }
+{                                                                              }
+{                                                                              }
+{                                                                              }
+{******************************************************************************}
+{                                                                              }
+{  Licensed under the Apache License, Version 2.0 (the "License");             }
+{  you may not use this file except in compliance with the License.            }
+{  You may obtain a copy of the License at                                     }
+{                                                                              }
+{  http://www.apache.org/licenses/LICENSE-2.0                                  }
+{                                                                              }
+{  Unless required by applicable law or agreed to in writing, software         }
+{  distributed under the License is distributed on an "AS IS" BASIS,           }
+{  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.    }
+{  See the License for the specific language governing permissions and         }
+{  limitations under the License.                                              }
+{                                                                              }
+{                                                                              }
+{ /// ATENÇÃO AS DEPENDÊNCIAS QUE ELE EXIGE E FAÇA BOM USO :)                  }
+{                                                                              }
+{                                                                              }
+{******************************************************************************}
+
+
+unit uRTOAuth2;
+
+interface
+
+uses
+  System.SysUtils, System.Classes, System.JSON, System.Net.HttpClient, System.NetEncoding,
+  JOSE.Core.JWT, JOSE.Core.JWS, JOSE.Core.JWK, JOSE.Types.JSON, System.DateUtils,
+  JOSE.Types.Bytes, JOSE.Core.JWA, JOSE.Core.JWA.Signing, System.IOUtils;
+
+type
+  TRTOAuth2 = class(TComponent)
+  private
+    FCredentialFilePath: string;
+    FScope: string; // Adiciona a variável de campo para Scope
+    function Base64UrlEncode(const Input: TBytes): string;
+    function GetJWTHeader: TJSONObject;
+    function GetJWTPayload(const ClientEmail, Scope, Audience: string): TJSONObject;
+    function SignJWTWithJOSE(const Header, Payload: TJSONObject; const PrivateKey: string): string;
+  public
+    function GetOAuth2Token(out tokenOrError : string) : boolean;
+  published
+    property CredentialFilePath: string read FCredentialFilePath write FCredentialFilePath;
+    property Scope: string read FScope write FScope;
+    // pegue o escopo da sua api em https://developers.google.com/identity/protocols/oauth2/scopes?hl=pt-br
+  end;
+
+procedure Register;
+
+implementation
+
+procedure Register;
+begin
+  RegisterComponents('RTC', [TRTOAuth2]);
+end;
+
+function TRTOAuth2.Base64UrlEncode(const Input: TBytes): string;
+var
+  Base64: string;
+begin
+  Base64 := TNetEncoding.Base64.EncodeBytesToString(Input);
+  Base64 := StringReplace(Base64, '+', '-', [rfReplaceAll]);
+  Base64 := StringReplace(Base64, '/', '_', [rfReplaceAll]);
+  Base64 := StringReplace(Base64, '=', '', [rfReplaceAll]);
+  Result := Base64;
+end;
+
+function TRTOAuth2.GetJWTHeader: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('alg', 'RS256');
+  Result.AddPair('typ', 'JWT');
+end;
+
+function TRTOAuth2.GetJWTPayload(const ClientEmail, Scope, Audience: string): TJSONObject;
+var
+  IssuedAt, Expiration: Int64;
+begin
+  Result := TJSONObject.Create;
+  IssuedAt := DateTimeToUnix(TTimeZone.Local.ToUniversalTime(Now)); // Convertendo para UTC
+  Expiration := IssuedAt + (60 * 60); // 60 minutos em segundos
+
+  Result.AddPair('iss', ClientEmail);
+  Result.AddPair('scope', Scope);
+  Result.AddPair('aud', Audience);
+  Result.AddPair('iat', TJSONNumber.Create(IssuedAt));
+  Result.AddPair('exp', TJSONNumber.Create(Expiration));
+end;
+
+function TRTOAuth2.SignJWTWithJOSE(const Header, Payload: TJSONObject; const PrivateKey: string): string;
+var
+  JWT: TJWT;
+  JWS: TJWS;
+  Key: TJWK;
+  KeyBytes: TBytes;
+  HeaderBase64, PayloadBase64: string;
+begin
+  JWT := TJWT.Create;
+  try
+    JWT.Header.JSON := Header;
+    JWT.Claims.JSON := Payload;
+
+    JWS := TJWS.Create(JWT);
+    try
+      KeyBytes := TEncoding.UTF8.GetBytes(PrivateKey);
+      Key := TJWK.Create(KeyBytes);
+      try
+        JWS.Sign(Key, TJOSEAlgorithmId.RS256);
+        Result := JWS.CompactToken;
+      finally
+        Key.Free;
+      end;
+    finally
+      JWS.Free;
+    end;
+  finally
+    JWT.Free;
+  end;
+end;
+
+function TRTOAuth2.GetOAuth2Token(out tokenOrError : string) : boolean;
+var
+  JSONValue: TJSONObject;
+  JSONString, JWT: string;
+  HttpClient: THttpClient;
+  HttpResponse: IHTTPResponse;
+  RequestBody: TStringStream;
+  AuthURL: string;
+  PrivateKey, ClientEmail: string;
+  Header, Payload: TJSONObject;
+begin
+  try
+    result := false;
+
+    AuthURL := 'https://oauth2.googleapis.com/token';
+    HttpClient := THttpClient.Create;
+    try
+      JSONString := TFile.ReadAllText(CredentialFilePath);
+      JSONValue := TJSONObject.ParseJSONValue(JSONString) as TJSONObject;
+      try
+        PrivateKey := JSONValue.GetValue<string>('private_key');
+        ClientEmail := JSONValue.GetValue<string>('client_email');
+
+        Header := GetJWTHeader;
+        Payload := GetJWTPayload(ClientEmail, FScope, AuthURL);
+        JWT := SignJWTWithJOSE(Header, Payload, PrivateKey);
+
+        RequestBody := TStringStream.Create('grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=' + JWT, TEncoding.UTF8);
+        try
+          HttpClient.CustomHeaders['Content-Type'] := 'application/x-www-form-urlencoded';
+          HttpResponse := HttpClient.Post(AuthURL, RequestBody);
+          if HttpResponse.StatusCode = 200 then
+          begin
+            JSONValue    := TJSONObject.ParseJSONValue(HttpResponse.ContentAsString) as TJSONObject;
+            tokenOrError := JSONValue.GetValue<string>('access_token');
+            Result       := true;
+          end
+          else
+          begin
+            tokenOrError := 'Failed to obtain token. Status Code: ' + HttpResponse.StatusText + ' Response: ' + HttpResponse.ContentAsString;
+          end;
+        finally
+          RequestBody.Free;
+        end;
+      finally
+        JSONValue.Free;
+      end;
+    finally
+      HttpClient.Free;
+    end;
+  except on e:exception do
+    begin
+      tokenOrError := e.Message;
+    end;
+  end;
+end;
+
+end.
+

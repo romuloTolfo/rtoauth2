@@ -48,17 +48,28 @@ type
   TRTOAuth2 = class(TComponent)
   private
     FCredentialFilePath: string;
-    FScope: string; // Adiciona a variável de campo para Scope
+    FScope: string;
+    FTokenOrError : string;
+    FExpiresin    : integer;
+    FTokenType    : string;
+
     function Base64UrlEncode(const Input: TBytes): string;
     function GetJWTHeader: TJSONObject;
     function GetJWTPayload(const ClientEmail, Scope, Audience: string): TJSONObject;
     function SignJWTWithJOSE(const Header, Payload: TJSONObject; const PrivateKey: string): string;
   public
-    function GetOAuth2Token(out tokenOrError : string) : boolean;
+    function GetOAuth2Token: boolean;
   published
+    // get params
     property CredentialFilePath: string read FCredentialFilePath write FCredentialFilePath;
-    property Scope: string read FScope write FScope;
-    // pegue o escopo da sua api em https://developers.google.com/identity/protocols/oauth2/scopes?hl=pt-br
+    property Scope: string read FScope write FScope;     // pegue o escopo da sua api em https://developers.google.com/identity/protocols/oauth2/scopes?hl=pt-br
+
+    //result params
+    property TokenOrError: string read FTokenOrError write FTokenOrError;
+    property Expiresin: integer read FExpiresin write FExpiresin;
+    property TokenType: string read FTokenType write FTokenType;
+
+
   end;
 
 procedure Register;
@@ -134,7 +145,7 @@ begin
   end;
 end;
 
-function TRTOAuth2.GetOAuth2Token(out tokenOrError : string) : boolean;
+function TRTOAuth2.GetOAuth2Token : boolean;
 var
   JSONValue: TJSONObject;
   JSONString, JWT: string;
@@ -167,13 +178,17 @@ begin
           HttpResponse := HttpClient.Post(AuthURL, RequestBody);
           if HttpResponse.StatusCode = 200 then
           begin
+            //sucesso
             JSONValue    := TJSONObject.ParseJSONValue(HttpResponse.ContentAsString) as TJSONObject;
-            tokenOrError := JSONValue.GetValue<string>('access_token');
+            FTokenOrError := JSONValue.GetValue<string>('access_token');
+            FExpiresin    := JSONValue.GetValue<integer>('expires_in');
+            FTokenType    := JSONValue.GetValue<string>('token_type');
             Result       := true;
           end
           else
           begin
-            tokenOrError := 'Failed to obtain token. Status Code: ' + HttpResponse.StatusText + ' Response: ' + HttpResponse.ContentAsString;
+            //erro
+            FtokenOrError := 'Failed to obtain token. Status Code: ' + HttpResponse.StatusText + ' Response: ' + HttpResponse.ContentAsString;
           end;
         finally
           RequestBody.Free;
