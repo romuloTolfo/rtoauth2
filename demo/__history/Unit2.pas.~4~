@@ -1,0 +1,54 @@
+unit Unit2;
+
+interface
+
+uses
+  System.SysUtils, System.Types, System.UITypes, System.Classes, System.Variants,
+  FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, uRTOAuth2,
+  FMX.Controls.Presentation, FMX.StdCtrls, Winapi.Windows, Winapi.ShellAPI;
+
+type
+  TForm2 = class(TForm)
+    Button1: TButton;
+    Label1: TLabel;
+    procedure Button1Click(Sender: TObject);
+    procedure Label1Click(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form2: TForm2;
+
+implementation
+
+{$R *.fmx}
+
+procedure TForm2.Button1Click(Sender: TObject);
+var
+  tc : TRTOAuth2;
+begin
+  try
+    tc := TRTOAuth2.Create(nil);
+
+    tc.CredentialFilePath := ExtractFilePath(ParamStr(0))+'arquivo.json'; //junto ao exe + arquivo .json que vc baixou da conta de servico link :
+    if not FileExists(tc.CredentialFilePath) then raise Exception.Create('Json de credenciais não existe');
+
+    tc.Scope              := 'https://www.googleapis.com/auth/firebase.messaging';
+
+    showmessage(tc.GetOAuth2Token);
+  finally
+
+  end;
+  tc.Destroy
+
+end;
+
+procedure TForm2.Label1Click(Sender: TObject);
+begin
+  ShellExecute(0, 'open', 'https://www.example.com', nil, nil, SW_SHOWNORMAL);
+end;
+
+end.

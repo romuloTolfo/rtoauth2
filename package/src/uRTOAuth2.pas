@@ -54,7 +54,7 @@ type
     function GetJWTPayload(const ClientEmail, Scope, Audience: string): TJSONObject;
     function SignJWTWithJOSE(const Header, Payload: TJSONObject; const PrivateKey: string): string;
   public
-    function GetOAuth2Token: string;
+    function GetOAuth2Token(out tokenOrError : string) : boolean;
   published
     property CredentialFilePath: string read FCredentialFilePath write FCredentialFilePath;
     property Scope: string read FScope write FScope;
@@ -134,7 +134,7 @@ begin
   end;
 end;
 
-function TRTOAuth2.GetOAuth2Token: string;
+function TRTOAuth2.GetOAuth2Token(out tokenOrError : string) : boolean;
 var
   JSONValue: TJSONObject;
   JSONString, JWT: string;
@@ -142,43 +142,52 @@ var
   HttpResponse: IHTTPResponse;
   RequestBody: TStringStream;
   AuthURL: string;
-  Token: string;
   PrivateKey, ClientEmail: string;
   Header, Payload: TJSONObject;
 begin
-  AuthURL := 'https://oauth2.googleapis.com/token';
-  HttpClient := THttpClient.Create;
   try
-    JSONString := TFile.ReadAllText(CredentialFilePath);
-    JSONValue := TJSONObject.ParseJSONValue(JSONString) as TJSONObject;
+    result := false;
+
+    AuthURL := 'https://oauth2.googleapis.com/token';
+    HttpClient := THttpClient.Create;
     try
-      PrivateKey := JSONValue.GetValue<string>('private_key');
-      ClientEmail := JSONValue.GetValue<string>('client_email');
-
-      Header := GetJWTHeader;
-      Payload := GetJWTPayload(ClientEmail, FScope, AuthURL);
-      JWT := SignJWTWithJOSE(Header, Payload, PrivateKey);
-
-      RequestBody := TStringStream.Create('grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=' + JWT, TEncoding.UTF8);
+      JSONString := TFile.ReadAllText(CredentialFilePath);
+      JSONValue := TJSONObject.ParseJSONValue(JSONString) as TJSONObject;
       try
-        HttpClient.CustomHeaders['Content-Type'] := 'application/x-www-form-urlencoded';
-        HttpResponse := HttpClient.Post(AuthURL, RequestBody);
-        if HttpResponse.StatusCode = 200 then
-        begin
-          JSONValue := TJSONObject.ParseJSONValue(HttpResponse.ContentAsString) as TJSONObject;
-          Token := JSONValue.GetValue<string>('access_token');
-          Result := Token;
-        end
-        else
-          result := 'Failed to obtain token. Status Code: ' + HttpResponse.StatusText + ' Response: ' + HttpResponse.ContentAsString;
+        PrivateKey := JSONValue.GetValue<string>('private_key');
+        ClientEmail := JSONValue.GetValue<string>('client_email');
+
+        Header := GetJWTHeader;
+        Payload := GetJWTPayload(ClientEmail, FScope, AuthURL);
+        JWT := SignJWTWithJOSE(Header, Payload, PrivateKey);
+
+        RequestBody := TStringStream.Create('grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=' + JWT, TEncoding.UTF8);
+        try
+          HttpClient.CustomHeaders['Content-Type'] := 'application/x-www-form-urlencoded';
+          HttpResponse := HttpClient.Post(AuthURL, RequestBody);
+          if HttpResponse.StatusCode = 200 then
+          begin
+            JSONValue    := TJSONObject.ParseJSONValue(HttpResponse.ContentAsString) as TJSONObject;
+            tokenOrError := JSONValue.GetValue<string>('access_token');
+            Result       := true;
+          end
+          else
+          begin
+            tokenOrError := 'Failed to obtain token. Status Code: ' + HttpResponse.StatusText + ' Response: ' + HttpResponse.ContentAsString;
+          end;
+        finally
+          RequestBody.Free;
+        end;
       finally
-        RequestBody.Free;
+        JSONValue.Free;
       end;
     finally
-      JSONValue.Free;
+      HttpClient.Free;
     end;
-  finally
-    HttpClient.Free;
+  except on e:exception do
+    begin
+      tokenOrError := e.Message;
+    end;
   end;
 end;
 
