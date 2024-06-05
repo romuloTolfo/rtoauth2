@@ -26,11 +26,11 @@ Este repositório contém um componente de instalação Delphi que permite de fo
 ## Configuração no Google (Buscar chave)
 - Primeiro acesse o [Console Google Cloud](https://console.cloud.google.com/?hl=pt-br)
 - Na aba a seguir crie sua chave json, como na imagem
-  ![Console Google](GerarChave.png)
+  ![Console Google](gerarchave.png)
 - Sua chave deverá se parecer com a imagem abaixo
   ![Chave Json](chave.png)
 
- ##Obrigado e trabalho!
+ ##Obrigado e bom trabalho!
 
 # English
 Project for obtaining OAuth2 token, Google API v1
@@ -60,7 +60,7 @@ This repository contains a Delphi installation component that allows a practical
 ## Configuration in Google (Get the key)
 - First, access the Google Cloud Console
 - In the following tab, create your JSON key, as shown in the image
-![Console Google](GerarChave.png)
+![Console Google](gerarchave.png)
 - Your key should look like the image below
   ![Chave Json](chave.png)
 
