@@ -5,6 +5,7 @@ Este repositório contém um componente de instalação Delphi que permite de fo
 
 ## Atenção 
  - Validado somente no Delphi 11 até o momento
+ - Validado somente no windows até o momento, pois utiliza as dlls do openssl
  - Exige dependências de terceiros citadas abaixo
  - Se houver alguma alteração do google api, possivelmente haverá reparos a serem feitos no componente
 
@@ -40,6 +41,7 @@ This repository contains a Delphi installation component that allows a practical
 
 ## Attention
 - Validated only on Delphi 11 so far
+- Validated only on windows so far, because use dlls of openssl
 - Requires third-party dependencies listed below
 - If there is any change in the Google API, repairs may need to be made to the component
 
